@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Beacon — the daily check-in for Agent ID holders</title>
+<meta name="description" content="Agent Beacon is a daily check-in ritual exclusively for Agent ID (name.ai) holders: build a streak, ping fellow agents, and collect soulbound milestone badges.">
+<style>
+  :root {
+    --bg: #070a14; --panel: #0d1322; --panel2: #111a2e; --line: #1e2a45;
+    --text: #e5e7eb; --muted: #94a3b8; --accent: #f0b90b; --accent2: #38bdf8;
+    --good: #34d399; --bad: #f87171; --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 600px at 50% -10%, #16213c 0%, var(--bg) 55%); color: var(--text);
+         font-family: ui-sans-system, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; min-height: 100vh; }
+  a { color: var(--accent2); }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 16px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0 18px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(145deg, #f0b90b, #b45309);
+          display: grid; place-items: center; font-size: 24px; box-shadow: 0 0 24px rgba(240,185,11,.35); }
+  .brand h1 { font-size: 22px; margin: 0; letter-spacing: .3px; }
+  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line);
+           background: var(--panel2); color: var(--text); padding: 9px 16px; }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: linear-gradient(145deg, #f0b90b, #d97706); color: #1a1207; font-weight: 700; border: none; }
+  button.big { width: 100%; padding: 16px; font-size: 18px; border-radius: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; }
+  .card { background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--line);
+          border-radius: var(--radius); padding: 18px; }
+  .span4 { grid-column: span 4; } .span6 { grid-column: span 6; } .span8 { grid-column: span 8; } .span12 { grid-column: span 12; }
+  @media (max-width: 820px) { .span4, .span6, .span8 { grid-column: span 12; } }
+  .card h2 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); }
+  .stat { text-align: center; }
+  .stat .num { font-size: 34px; font-weight: 800; line-height: 1.1; }
+  .stat .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+  .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--line); }
+  .pill.ok { color: var(--good); border-color: var(--good); }
+  .pill.no { color: var(--bad); border-color: var(--bad); }
+  .muted { color: var(--muted); } .small { font-size: 13px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; word-break: break-all; }
+  input[type="text"] { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--line);
+                       background: #0a0f1e; color: var(--text); font: inherit; }
+  .row { display: flex; gap: 10px; } .row > * { flex: 1; }
+  .badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 820px) { .badges { grid-template-columns: repeat(2, 1fr); } }
+  .badge { text-align: center; border: 1px solid var(--line); border-radius: 12px; padding: 14px 8px; background: #0a0f1e; }
+  .badge .flame { font-size: 34px; }
+  .badge .tname { font-weight: 700; margin-top: 6px; }
+  .badge .treq { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  .badge.held { border-color: var(--accent); box-shadow: 0 0 16px rgba(240,185,11,.18) inset; }
+  ul.feed { list-style: none; margin: 0; padding: 0; }
+  ul.feed li { padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 14px; display: flex; justify-content: space-between; gap: 10px; }
+  ul.feed li:last-child { border-bottom: none; }
+  table.lb { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.lb td, table.lb th { padding: 7px 4px; border-bottom: 1px dashed var(--line); text-align: left; }
+  table.lb th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .notice { border: 1px solid var(--accent); background: rgba(240,185,11,.08); border-radius: var(--radius); padding: 14px 18px; }
+  #status { min-height: 20px; }
+  footer { margin-top: 34px; color: var(--muted); font-size: 13px; text-align: center; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">🔆</div>
+      <div>
+        <h1>Agent Beacon</h1>
+        <p>The daily check-in ritual for Agent ID holders</p>
+      </div>
+    </div>
+    <div>
+      <span id="whoami" class="pill" style="display:none"></span>
+      <button id="connectBtn">Connect wallet</button>
+    </div>
+  </header>
+
+  <div id="deployNotice" class="notice" style="display:none; margin-bottom:14px">
+    The Agent Beacon contract is being deployed — check-in opens shortly. You can already verify your Agent ID status below.
+  </div>
+  <div id="libNotice" class="notice" style="display:none; margin-bottom:14px">
+    The web3 library failed to load (CDN unreachable). Please check your connection and reload the page.
+  </div>
+
+  <div class="grid">
+    <!-- Identity + my stats -->
+    <section class="card span4">
+      <h2>Your Agent ID</h2>
+      <p id="idStatus"><span class="pill">not connected</span></p>
+      <p class="small muted">Agent Beacon is open to wallets that hold an Agent ID (a <span class="mono">name.ai</span> identity). Only your own status is ever shown here — this page never looks up anyone else's wallet.</p>
+      <div class="grid" style="grid-template-columns:1fr 1fr; gap:10px; margin-top:8px">
+        <div class="stat"><div class="num" id="stStreak">–</div><div class="lbl">Day streak</div></div>
+        <div class="stat"><div class="num" id="stBest">–</div><div class="lbl">Best streak</div></div>
+        <div class="stat"><div class="num" id="stTotal">–</div><div class="lbl">Check-ins</div></div>
+        <div class="stat"><div class="num" id="stPings">–</div><div class="lbl">Pings sent / got</div></div>
+      </div>
+    </section>
+
+    <!-- Check in -->
+    <section class="card span8">
+      <h2>Daily check-in</h2>
+      <p class="small muted">One check-in per UTC day keeps your streak alive. Miss a day and the streak restarts — your best streak and badges are yours forever. Badges are the only reward here: collectible milestones, nothing more.</p>
+      <button id="checkInBtn" class="primary big" disabled>Check in today</button>
+      <p id="checkInHint" class="small muted" style="margin-top:10px"></p>
+      <p id="status" class="small"></p>
+    </section>
+
+    <!-- Badges -->
+    <section class="card span12">
+      <h2>Milestone badges — soulbound, bound to your streak</h2>
+      <div class="badges" id="badgeShelf"></div>
+      <p class="small muted" style="margin-top:10px">Badges are non-transferable ERC-721 tokens minted by the Agent Beacon contract when your live streak reaches a milestone. Claim while the streak is alive.</p>
+    </section>
+
+    <!-- Ping -->
+    <section class="card span6">
+      <h2>Ping a fellow agent</h2>
+      <p class="small muted">Send a signal to another Agent ID holder. Paste their wallet address — one ping per agent per day.</p>
+      <div class="row">
+        <input type="text" id="pingAddr" placeholder="0x… wallet address">
+        <button id="pingBtn" style="flex:0 0 auto" disabled>Ping</button>
+      </div>
+      <p id="pingStatus" class="small"></p>
+    </section>
+
+    <!-- Global stats -->
+    <section class="card span6">
+      <h2>The beacon so far</h2>
+      <div class="grid" style="grid-template-columns:1fr 1fr 1fr; gap:10px">
+        <div class="stat"><div class="num" id="gAgents">–</div><div class="lbl">Agents</div></div>
+        <div class="stat"><div class="num" id="gCheckIns">–</div><div class="lbl">Check-ins</div></div>
+        <div class="stat"><div class="num" id="gPings">–</div><div class="lbl">Pings</div></div>
+      </div>
+      <p class="small muted" style="margin-top:10px">Contract: <span class="mono" id="contractAddr">—</span><br>
+      Agent ID registry: <span class="mono">0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F</span></p>
+    </section>
+
+    <!-- Leaderboard -->
+    <section class="card span6">
+      <h2>Top streaks</h2>
+      <table class="lb"><thead><tr><th>#</th><th>Agent</th><th>Streak</th><th>Check-ins</th></tr></thead>
+      <tbody id="lbBody"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody></table>
+      <p class="small muted">Derived from on-chain check-in events. Addresses are shown truncated — the board celebrates streaks, not identities.</p>
+    </section>
+
+    <!-- Recent activity -->
+    <section class="card span6">
+      <h2>Recent activity</h2>
+      <ul class="feed" id="feed"><li class="muted">Loading…</li></ul>
+    </section>
+  </div>
+
+  <footer>
+    Agent Beacon is a community check-in ritual for Agent ID holders. Badges are collectibles with no monetary value.<br>
+    The Agent Beacon contract has no owner and no admin functions: nobody can pause it, move funds through it, or change its rules.
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<script>
+"use strict";
+/* ============================== CONFIG ============================== */
+const CONFIG = {
+  chainId: 56, // BNB Smart Chain mainnet
+  rpc: "https://bsc-dataseed.binance.org",
+  // Agent ID registry (SPACE ID Agent ID) on BSC mainnet:
+  registry: "0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F",
+  // Agent Beacon contract on BSC mainnet — FILLED IN AFTER MAINNET DEPLOY:
+  beacon: "0x3cfF128F3d5C491b089a812c261386990A093aF2",
+};
+/* ==================================================================== */
+
+const REGISTRY_ABI = ["function balanceOf(address owner) view returns (uint256)"];
+const BEACON_ABI = [
+  "function checkIn()",
+  "function ping(address to)",
+  "function claimBadge(uint8 tier) returns (uint256)",
+  "function myStats(address user) view returns (uint256 streak, uint256 bestStreak, uint256 totalCheckIns, uint256 lastCheckInDay, uint256 pingsSent, uint256 pingsReceived, uint256 badgesMask)",
+  "function currentStreak(address user) view returns (uint256)",
+  "function holdsAgentID(address user) view returns (bool)",
+  "function hasBadge(address user, uint8 tier) view returns (bool)",
+  "function totalAgents() view returns (uint256)",
+  "function totalCheckInsAll() view returns (uint256)",
+  "function totalPings() view returns (uint256)",
+  "event CheckedIn(address indexed user, uint256 day, uint256 streak, uint256 totalCheckIns)",
+  "event Pinged(address indexed from, address indexed to, uint256 day)",
+  "event BadgeClaimed(address indexed user, uint8 tier, uint256 tokenId)",
+];
+const TIERS = [
+  { name: "Spark", days: 3, emoji: "✨" },
+  { name: "Flame", days: 7, emoji: "🔥" },
+  { name: "Blaze", days: 14, emoji: "🌋" },
+  { name: "Beacon", days: 30, emoji: "🔆" },
+];
+
+const $ = (id) => document.getElementById(id);
+const trunc = (a) => (a ? a.slice(0, 6) + "…" + a.slice(-4) : "—");
+const todayUTC = () => Math.floor(Date.now() / 86400000);
+const deployed = () => CONFIG.beacon !== "0x3cfF128F3d5C491b089a812c261386990A093aF2";
+
+let account = null;
+let signer = null;
+let myStatsCache = null;
+
+function setStatus(msg, isError) {
+  const el = $("status");
+  el.textContent = msg || "";
+  el.style.color = isError ? "var(--bad)" : "var(--good)";
+}
+function readProvider() { return new ethers.JsonRpcProvider(CONFIG.rpc); }
+function beaconRead() { return new ethers.Contract(CONFIG.beacon, BEACON_ABI, readProvider()); }
+function beaconWrite() { return new ethers.Contract(CONFIG.beacon, BEACON_ABI, signer); }
+
+async function refreshGlobals() {
+  if (!deployed()) return;
+  try {
+    const b = beaconRead();
+    const [a, c, p] = await Promise.all([b.totalAgents(), b.totalCheckInsAll(), b.totalPings()]);
+    $("gAgents").textContent = a.toString();
+    $("gCheckIns").textContent = c.toString();
+    $("gPings").textContent = p.toString();
+  } catch (e) { /* read RPC hiccup — leave placeholders */ }
+}
+
+async function refreshMine() {
+  const btn = $("checkInBtn");
+  if (!account) {
+    $("idStatus").innerHTML = '<span class="pill">not connected</span>';
+    btn.disabled = true;
+    $("checkInHint").textContent = "Connect your wallet to check in.";
+    return;
+  }
+  $("whoami").style.display = "";
+  $("whoami").textContent = trunc(account);
+  try {
+    const reg = new ethers.Contract(CONFIG.registry, REGISTRY_ABI, readProvider());
+    const holds = (await reg.balanceOf(account)) > 0n;
+    $("idStatus").innerHTML = holds
+      ? '<span class="pill ok">Agent ID holder ✓</span>'
+      : '<span class="pill no">No Agent ID on this wallet</span>';
+    if (!deployed()) {
+      btn.disabled = true;
+      $("checkInHint").textContent = "Check-in opens when the contract goes live.";
+      return;
+    }
+    const b = beaconRead();
+    const s = await b.myStats(account);
+    myStatsCache = s;
+    const live = await b.currentStreak(account);
+    $("stStreak").textContent = live.toString();
+    $("stBest").textContent = s.bestStreak.toString();
+    $("stTotal").textContent = s.totalCheckIns.toString();
+    $("stPings").textContent = `${s.pingsSent.toString()} / ${s.pingsReceived.toString()}`;
+    const checkedToday = Number(s.lastCheckInDay) === todayUTC();
+    if (!holds) {
+      btn.disabled = true;
+      $("checkInHint").textContent = "This wallet holds no Agent ID, so it cannot check in. Agent IDs are claimed in the Binance app (Wallet → Agent ID).";
+    } else if (checkedToday) {
+      btn.disabled = true;
+      btn.textContent = "Checked in ✓ — see you tomorrow";
+      $("checkInHint").textContent = "You have checked in today. Your streak is safe until the next UTC day.";
+    } else {
+      btn.disabled = false;
+      btn.textContent = "Check in today";
+      $("checkInHint").textContent = live > 0n ? `Check in now to extend your streak to ${live + 1n} days.` : "Start a fresh streak today.";
+    }
+    $("pingBtn").disabled = !holds;
+    renderBadges(Number(live), Number(s.badgesMask), holds);
+  } catch (e) {
+    setStatus("Could not read your stats — please try again.", true);
+  }
+}
+
+function renderBadges(liveStreak, mask, holds) {
+  const shelf = $("badgeShelf");
+  shelf.innerHTML = "";
+  TIERS.forEach((t, i) => {
+    const held = (mask >> i) & 1;
+    const eligible = holds && !held && liveStreak >= t.days;
+    const div = document.createElement("div");
+    div.className = "badge" + (held ? " held" : "");
+    div.innerHTML = `<div class="flame">${t.emoji}</div><div class="tname">${t.name}</div>` +
+      `<div class="treq">${t.days}-day streak</div>`;
+    const b = document.createElement("button");
+    if (held) { b.textContent = "Collected ✓"; b.disabled = true; }
+    else if (eligible) { b.textContent = "Claim badge"; b.className = "primary"; b.onclick = () => claimBadge(i); }
+    else { b.textContent = holds ? `${Math.max(0, t.days - liveStreak)} days to go` : "Needs Agent ID"; b.disabled = true; }
+    div.appendChild(b);
+    shelf.appendChild(div);
+  });
+}
+
+async function ensureChain() {
+  const current = await window.ethereum.request({ method: "eth_chainId" });
+  if (parseInt(current, 16) !== CONFIG.chainId) {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: "0x" + CONFIG.chainId.toString(16) }],
+    });
+  }
+}
+
+async function connect() {
+  if (!window.ethereum) {
+    setStatus("No wallet found. Open this page in the Binance Wallet app browser or a wallet browser.", true);
+    return;
+  }
+  try {
+    await ensureChain();
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    $("connectBtn").textContent = "Connected";
+    $("connectBtn").disabled = true;
+    setStatus("");
+    await refreshMine();
+  } catch (e) {
+    setStatus("Connection was not completed.", true);
+  }
+}
+
+async function checkIn() {
+  try {
+    setStatus("Waiting for your confirmation in the wallet…");
+    const tx = await beaconWrite().checkIn();
+    setStatus("Check-in sent — waiting for the block…");
+    await tx.wait();
+    setStatus("Checked in. Streak updated ✓");
+    await Promise.all([refreshMine(), refreshGlobals(), refreshActivity()]);
+  } catch (e) {
+    setStatus("Check-in did not go through: " + (e.shortMessage || "rejected or failed"), true);
+  }
+}
+
+async function claimBadge(tier) {
+  try {
+    setStatus("Waiting for your confirmation in the wallet…");
+    const tx = await beaconWrite().claimBadge(tier);
+    await tx.wait();
+    setStatus(`${TIERS[tier].name} badge collected ✓`);
+    await Promise.all([refreshMine(), refreshActivity()]);
+  } catch (e) {
+    setStatus("Badge claim did not go through: " + (e.shortMessage || "rejected or failed"), true);
+  }
+}
+
+async function ping() {
+  const to = $("pingAddr").value.trim();
+  const st = $("pingStatus");
+  if (!ethers.isAddress(to)) { st.textContent = "That does not look like a wallet address."; st.style.color = "var(--bad)"; return; }
+  if (account && to.toLowerCase() === account.toLowerCase()) { st.textContent = "You cannot ping yourself."; st.style.color = "var(--bad)"; return; }
+  try {
+    st.textContent = "Waiting for your confirmation in the wallet…"; st.style.color = "";
+    const tx = await beaconWrite().ping(to);
+    await tx.wait();
+    st.textContent = `Ping sent to ${trunc(to)} ✓`; st.style.color = "var(--good)";
+    await Promise.all([refreshMine(), refreshGlobals(), refreshActivity()]);
+  } catch (e) {
+    st.textContent = "Ping did not go through — the target may not hold an Agent ID, or you already pinged them today.";
+    st.style.color = "var(--bad)";
+  }
+}
+
+async function fetchEvents() {
+  const provider = readProvider();
+  const iface = new ethers.Interface(BEACON_ABI);
+  const latest = await provider.getBlockNumber();
+  const topics = [
+    iface.getEvent("CheckedIn").topicHash,
+    iface.getEvent("Pinged").topicHash,
+    iface.getEvent("BadgeClaimed").topicHash,
+  ];
+  const logs = [];
+  const SPAN = 5000, CHUNKS = 8; // ~40k blocks ≈ 1.4 days of BSC blocks
+  for (let i = 0; i < CHUNKS; i++) {
+    const to = latest - i * SPAN;
+    const from = Math.max(0, to - SPAN + 1);
+    try {
+      const part = await provider.getLogs({ address: CONFIG.beacon, topics: [topics], fromBlock: from, toBlock: to });
+      logs.push(...part);
+    } catch (e) { /* chunk too large / RPC limit — continue with what we have */ }
+    if (from === 0) break;
+  }
+  return logs.map((l) => { try { return { parsed: iface.parseLog(l), block: l.blockNumber }; } catch { return null; } })
+             .filter(Boolean)
+             .sort((a, b) => b.block - a.block);
+}
+
+async function refreshActivity() {
+  if (!deployed()) { $("feed").innerHTML = '<li class="muted">Opens at launch.</li>'; $("lbBody").innerHTML = '<tr><td colspan="4" class="muted">Opens at launch.</td></tr>'; return; }
+  try {
+    const events = await fetchEvents();
+    // Recent activity feed
+    const feed = $("feed");
+    feed.innerHTML = "";
+    if (!events.length) feed.innerHTML = '<li class="muted">No activity yet — be the first beacon.</li>';
+    for (const { parsed } of events.slice(0, 18)) {
+      const li = document.createElement("li");
+      if (parsed.name === "CheckedIn") li.innerHTML = `<span>✅ ${trunc(parsed.args.user)} checked in</span><span class="muted">streak ${parsed.args.streak}</span>`;
+      else if (parsed.name === "Pinged") li.innerHTML = `<span>📡 ${trunc(parsed.args.from)} pinged ${trunc(parsed.args.to)}</span><span class="muted">signal</span>`;
+      else if (parsed.name === "BadgeClaimed") li.innerHTML = `<span>🏅 ${trunc(parsed.args.user)} claimed a badge</span><span class="muted">${TIERS[Number(parsed.args.tier)].name}</span>`;
+      feed.appendChild(li);
+    }
+    // Leaderboard: latest CheckedIn per user wins (events are processed oldest→newest for state)
+    const byUser = new Map();
+    for (const { parsed } of [...events].reverse()) {
+      if (parsed.name === "CheckedIn") byUser.set(parsed.args.user.toLowerCase(), parsed.args);
+    }
+    const rows = [...byUser.values()].sort((a, b) => Number(b.streak) - Number(a.streak) || Number(b.totalCheckIns) - Number(a.totalCheckIns)).slice(0, 10);
+    const lb = $("lbBody");
+    lb.innerHTML = rows.length ? "" : '<tr><td colspan="4" class="muted">No check-ins yet.</td></tr>';
+    rows.forEach((r, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${i + 1}</td><td class="mono">${trunc(r.user)}</td><td>${r.streak}</td><td>${r.totalCheckIns}</td>`;
+      lb.appendChild(tr);
+    });
+  } catch (e) { /* leave placeholders */ }
+}
+
+window.addEventListener("load", async () => {
+  if (typeof ethers === "undefined") { $("libNotice").style.display = ""; return; }
+  $("contractAddr").textContent = deployed() ? CONFIG.beacon : "to be announced at launch";
+  if (!deployed()) $("deployNotice").style.display = "";
+  renderBadges(0, 0, false);
+  $("connectBtn").onclick = connect;
+  $("checkInBtn").onclick = checkIn;
+  $("pingBtn").onclick = ping;
+  if (window.ethereum && window.ethereum.on) {
+    window.ethereum.on("accountsChanged", () => location.reload());
+    window.ethereum.on("chainChanged", () => location.reload());
+  }
+  await Promise.all([refreshGlobals(), refreshActivity()]);
+});
+</script>
+</body>
+</html>

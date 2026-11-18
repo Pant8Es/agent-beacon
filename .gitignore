@@ -1,0 +1,3 @@
+deployer.json
+node_modules/
+*.keypair.json
